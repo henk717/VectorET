@@ -129,6 +129,16 @@ var Module = {
       startConnectRetry();
     }
 
+    // If our claim crossed with a lower-id peer's, we may have started a
+    // server nobody should be on. Shut it down and join theirs instead.
+    net.onDemoted = (ip) => {
+      const target = `${VectorETNet.ipToString(ip)}:${VectorETNet.ENGINE_PORT}`;
+      setRole(`joining ${VectorETNet.ipToString(ip)}`);
+      logLine(`[et-net] another host has priority, joining ${target}`);
+      Module.ccall('VectorET_Exec', null, ['string'], ['killserver\n']);
+      startConnectRetry();
+    };
+
     // reachable from the console as netdiag() while debugging the transport
     window.netdiag = () => ({
       role: net.isHost ? 'host' : 'client',
@@ -152,24 +162,39 @@ var Module = {
  * than the engine's own connect timeout. Rather than guess how long, retry
  * until traffic actually arrives from the host.
  */
+let connectTimer = null;
+
 function startConnectRetry() {
   const target = `${VectorETNet.ipToString(net.hostIp)}:${VectorETNet.ENGINE_PORT}`;
+  const baseline = net.stats.recvFromHost;
   let tries = 0;
 
-  const timer = setInterval(() => {
-    if (net.stats.recv > 0) {
-      clearInterval(timer);
+  if (connectTimer) {
+    clearInterval(connectTimer);
+  }
+
+  const attempt = () => {
+    // measured against the host specifically: a demoted host may already have
+    // traffic from its own former clients, which says nothing about us
+    if (net.stats.recvFromHost > baseline) {
+      clearInterval(connectTimer);
+      connectTimer = null;
       setRole('connected');
+      setStatus('in the field');
       return;
     }
     if (++tries > CONNECT_MAX_TRIES) {
-      clearInterval(timer);
+      clearInterval(connectTimer);
+      connectTimer = null;
       setStatus('host never answered - reload to retry', true);
       return;
     }
     logLine(`[et-net] connect attempt ${tries} -> ${target}`);
     Module.ccall('VectorET_Exec', null, ['string'], [`connect ${target}\n`]);
-  }, CONNECT_RETRY_MS);
+  };
+
+  attempt();
+  connectTimer = setInterval(attempt, CONNECT_RETRY_MS);
 }
 
 /* -------------------------------------------------- start */

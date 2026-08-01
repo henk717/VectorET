@@ -39,9 +39,16 @@
   // (clc.serverAddress vs the packet source) line up on both ends.
   const ENGINE_PORT = 27960;
 
-  const ELECT_LISTEN_MS = 900;  // wait for an existing host to announce
-  const ELECT_CLAIM_MS = 700;   // wait for rival claims after claiming
-  const ELECT_SETTLE_MS = 600;  // let a fresh host's announce reach us
+  // joinRealtimeChannel() hands back a channel object straight away, but the
+  // host only registers the channel after an async round trip (in Vector, a
+  // Tauri invoke plus Iroh/Nostr peer setup). Anything sent before that lands
+  // is rejected outright - "Realtime channel not active". So warm up first,
+  // and treat every early send as unreliable rather than decisive.
+  const CHANNEL_WARMUP_MS = 1500;
+  const DISCOVER_TRIES = 4;      // repeated, since any one may be dropped
+  const DISCOVER_EVERY_MS = 400;
+  const ELECT_CLAIM_MS = 900;    // wait for rival claims after claiming
+  const ELECT_SETTLE_MS = 600;   // let a fresh host's announce reach us
   const ANNOUNCE_EVERY_MS = 2000;
 
   /* -------------------------------------------------- identity */
@@ -115,7 +122,8 @@
       this.module = null;
 
       this.stats = {
-        sent: 0, recv: 0, dropped: 0, errors: 0, bytesSent: 0, bytesRecv: 0,
+        sent: 0, recv: 0, recvFromHost: 0, dropped: 0, errors: 0,
+        bytesSent: 0, bytesRecv: 0,
       };
     }
 
@@ -205,6 +213,12 @@
       this.stats.recv++;
       this.stats.bytesRecv += data.length;
 
+      // counted separately: "am I connected" means the host is answering,
+      // which is not the same question as "is any traffic arriving"
+      if (this.hostIp && ipEquals(src, this.hostIp)) {
+        this.stats.recvFromHost++;
+      }
+
       if (this.module) {
         this._push(src, srcPort, payload);
       } else {
@@ -256,6 +270,8 @@
       channel.send(m);
     };
 
+    const idOfIp = (ip) => (ip[1] << 16) | (ip[2] << 8) | ip[3];
+
     channel.setListener((data) => {
       if (!data || !data.length) {
         return;
@@ -263,7 +279,24 @@
       switch (data[0]) {
         case MSG_HOST_ANNOUNCE:
           if (data.length >= 5) {
-            hostIp = [data[1], data[2], data[3], data[4]];
+            const seen = [data[1], data[2], data[3], data[4]];
+            // Two peers can both self-elect if their claims crossed while the
+            // channel was still warming up. Whoever has the higher id stands
+            // down on hearing the other, so a split heals instead of leaving
+            // two separate games running side by side.
+            if (amHost && idOfIp(seen) < myId) {
+              amHost = false;
+              net.isHost = false;
+              net.hostIp = seen;
+              console.warn('[et-net] standing down for lower host %s',
+                           ipToString(seen));
+              if (net.onDemoted) {
+                net.onDemoted(seen);
+              }
+            }
+            if (!amHost) {
+              hostIp = seen;
+            }
           }
           break;
         case MSG_DISCOVER:
@@ -283,8 +316,16 @@
 
     console.log('[et-net] id=%d ip=%s addr=%s', myId, ipToString(myIp), selfAddr);
 
-    channel.send(new Uint8Array([MSG_DISCOVER]));
-    await sleep(ELECT_LISTEN_MS);
+    // Let the host finish registering the channel before anything we send can
+    // count. Sends before this are silently discarded by the messenger.
+    await sleep(CHANNEL_WARMUP_MS);
+
+    // Repeat discovery: a single probe that lands during setup is lost, and
+    // losing it means starting a rival server instead of joining the match.
+    for (let i = 0; i < DISCOVER_TRIES && !hostIp; i++) {
+      channel.send(new Uint8Array([MSG_DISCOVER]));
+      await sleep(DISCOVER_EVERY_MS);
+    }
 
     if (!hostIp) {
       // jitter so simultaneous starts do not collide on the same tick

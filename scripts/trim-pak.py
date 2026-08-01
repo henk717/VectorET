@@ -328,6 +328,19 @@ def main():
     pending_shaders = set()
     pending_models = set()
 
+    # Always-kept directories go in before the walk, and their models are
+    # seeded into it. Keeping a model without resolving what it references
+    # leaves it in the pak wearing the default shader - which is how the
+    # health powerups lost their texture.
+    for n in names:
+        if n.endswith('/'):
+            continue
+        low = n.lower()
+        if low.startswith(ALWAYS_PREFIXES) or low.endswith(ALWAYS_SUFFIXES):
+            keep.add(n)
+            if low.endswith(('.md3', '.mdc', '.skin')):
+                pending_models.add(low)
+
     for n in names:
         if not n.startswith('maps/'):
             continue
@@ -439,8 +452,16 @@ def main():
                 continue
             keep.add(real)
 
-            if real.lower().endswith(('.md3', '.mdc')):
-                for sh in parse_md3(z.read(real)):
+            if real.lower().endswith(('.md3', '.mdc', '.skin')):
+                blob = z.read(real)
+                refs = set(parse_md3(blob))
+                # ET ships plenty of MDC models (magic IDPC), whose surface
+                # tables sit at different offsets than MD3's. Rather than carry
+                # per-format offset math, also mine the raw bytes: model files
+                # store shader names as fixed-width strings, so a scan catches
+                # every format and every version.
+                refs |= scan_binary_for_assets(blob)
+                for sh in refs:
                     if sh.lower() not in seen_shaders:
                         pending_shaders.add(sh.lower())
 
