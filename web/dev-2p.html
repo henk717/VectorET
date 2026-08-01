@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VectorET - two peer test</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0c0a; color: #d9cfb8;
+               font: 12px/1.4 "Courier New", monospace; }
+  #bar { height: 26px; display: flex; align-items: center; gap: 16px; padding: 0 10px;
+         background: #17150f; border-bottom: 1px solid #2e2a1e; }
+  #bar b { color: #b8912f; }
+  #frames { display: flex; height: calc(100% - 26px); }
+  iframe { flex: 1 1 50%; border: 0; border-right: 1px solid #2e2a1e; height: 100%; }
+</style>
+</head>
+<body>
+<div id="bar"><b>2-peer harness</b><span id="a">a: …</span><span id="b">b: …</span></div>
+<div id="frames">
+  <iframe id="fa" src="index.html?peer=alpha"></iframe>
+  <iframe id="fb" src="index.html?peer=bravo"></iframe>
+</div>
+<script>
+// Both peers live in one visible document so each keeps getting rAF; a hidden
+// tab is throttled to no frames at all, which stalls the engine outright.
+function summarise(win) {
+  try {
+    if (!win || !win.netdiag) {
+      const s = win && win.document.getElementById('status');
+      return s ? s.textContent : 'loading';
+    }
+    const d = win.netdiag();
+    return `${d.role} ${d.myIp} tx${d.js.sent} rx${d.js.recv} `
+         + `dlv${d.wasm.delivered} q${d.wasm.queued} err${d.js.errors}`;
+  } catch (e) {
+    return 'err: ' + e.message;
+  }
+}
+setInterval(() => {
+  document.getElementById('a').textContent = 'a: ' + summarise(fa.contentWindow);
+  document.getElementById('b').textContent = 'b: ' + summarise(fb.contentWindow);
+}, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# toolchain and upstream checkouts (see README for the clone commands)
+tools/emsdk/
+tools/gl4es/
+src/
+build/
+
+# game data: not redistributable, fetch from mirror.etlegacy.com
+assets/
+assets-trimmed/
+
+# build outputs
+web/files/
+web/etl.js
+web/etl.wasm
+web/manifest.json
+*.xdc

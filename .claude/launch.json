@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vectoret",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8666", "--directory", "web"],
+      "port": 8666
+    }
+  ]
+}

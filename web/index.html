@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Wolfenstein: Enemy Territory</title>
+<style>
+  :root {
+    --bg: #0d0c0a;
+    --panel: #17150f;
+    --ink: #d9cfb8;
+    --dim: #8a7f68;
+    --accent: #b8912f;
+    --err: #c4573f;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 "Courier New", ui-monospace, monospace;
+    overflow: hidden;
+  }
+
+  /* ---- loading / lobby ---- */
+
+  #shell {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at 50% 30%, #241f16 0%, var(--bg) 70%);
+  }
+
+  body.playing #shell { display: none; }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(20px, 5vw, 34px);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 2px 0 #000;
+  }
+
+  .sub {
+    margin: -10px 0 0;
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  #status {
+    min-height: 1.5em;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  #status.err { color: var(--err); }
+
+  #role {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    min-height: 1.5em;
+  }
+
+  #track {
+    width: min(420px, 80vw);
+    height: 6px;
+    background: #000;
+    border: 1px solid #2e2a1e;
+  }
+
+  #bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.2s linear;
+  }
+
+  /* ---- console log ---- */
+
+  #log {
+    display: none;
+    position: absolute;
+    inset: auto 0 0 0;
+    max-height: 45%;
+    overflow-y: auto;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.85);
+    border-top: 1px solid #2e2a1e;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--dim);
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  body.showlog #log { display: block; }
+  #log .err { color: var(--err); }
+
+  /* ---- game ---- */
+
+  #canvas {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    outline: none;
+  }
+
+  body.playing #canvas { display: block; }
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <h1>Enemy Territory</h1>
+  <p class="sub">Vector Field Operations</p>
+  <div id="track"><div id="bar"></div></div>
+  <div id="status">starting up</div>
+  <div id="role"></div>
+</div>
+
+<canvas id="canvas" tabindex="-1"></canvas>
+<div id="log"></div>
+
+<script>
+// Surface engine startup failures. A fault inside Emscripten's preRun or
+// wasm instantiation otherwise leaves the page sitting on its last status
+// line with nothing said, which is indistinguishable from slow loading.
+(function () {
+  function show(what, detail) {
+    var s = document.getElementById('status');
+    if (s) { s.textContent = what; s.className = 'err'; }
+    var l = document.getElementById('log');
+    if (l) {
+      var d = document.createElement('div');
+      d.className = 'err';
+      d.textContent = detail;
+      l.appendChild(d);
+    }
+    document.body.classList.add('showlog');
+    document.body.classList.remove('playing');
+  }
+  addEventListener('error', function (e) {
+    show('startup failed: ' + (e.message || 'error'),
+         (e.message || '') + '\n' + (e.filename || '') + ':' + (e.lineno || '') +
+         '\n' + ((e.error && e.error.stack) || ''));
+  });
+  addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    show('startup failed: ' + ((r && r.message) || r),
+         String((r && r.stack) || r));
+  });
+})();
+</script>
+<script src="webxdc-dev-shim.js"></script>
+<script src="webxdc-net.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>
