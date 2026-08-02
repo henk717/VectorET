@@ -149,6 +149,14 @@
   }
 
   body.playing #canvas { display: block; }
+
+  /* Pointer lock normally hides the OS cursor. When the webview refuses the
+     lock, the engine still draws its own cursor from accumulated relative
+     deltas, so two cursors are visible and they drift apart the moment the
+     engine's one clamps at a screen edge. Hiding the real one leaves the
+     game's cursor as the only one, which is what a locked pointer looks
+     like. */
+  body.nolock #canvas { cursor: none; }
 </style>
 </head>
 <body>
@@ -169,29 +177,60 @@
 // Surface engine startup failures. A fault inside Emscripten's preRun or
 // wasm instantiation otherwise leaves the page sitting on its last status
 // line with nothing said, which is indistinguishable from slow loading.
+//
+// Once the game is running this must only ever log. A running game throws
+// non-fatal errors - a refused pointer lock being the obvious one - and
+// tearing the player back to the loading screen over one is far worse than
+// the error itself.
 (function () {
-  function show(what, detail) {
+  window.__etRuntimeUp = false;
+
+  function logOnly(detail) {
+    var l = document.getElementById('log');
+    if (!l) { return; }
+    var d = document.createElement('div');
+    d.className = 'err';
+    d.textContent = detail;
+    l.appendChild(d);
+  }
+
+  function fail(what, detail) {
     var s = document.getElementById('status');
     if (s) { s.textContent = what; s.className = 'err'; }
-    var l = document.getElementById('log');
-    if (l) {
-      var d = document.createElement('div');
-      d.className = 'err';
-      d.textContent = detail;
-      l.appendChild(d);
-    }
+    logOnly(detail);
     document.body.classList.add('showlog');
     document.body.classList.remove('playing');
   }
+
+  // A refused pointer lock is an input-capability fact, not a crash: the
+  // shell reports it through the input hint and play continues on a pad.
+  function isPointerLock(msg) {
+    return /pointer lock/i.test(msg || '');
+  }
+
+  function handle(msg, detail) {
+    if (isPointerLock(msg)) {
+      // SDL re-requests the lock on every click and focus change, so this
+      // fires continuously. The shell reports it once; logging each one
+      // would bury everything else.
+      if (window.__etOnPointerLockDenied) { window.__etOnPointerLockDenied(); }
+      return;
+    }
+    if (window.__etRuntimeUp) {
+      logOnly(detail);   // running: never interrupt play
+      return;
+    }
+    fail('startup failed: ' + msg, detail);
+  }
+
   addEventListener('error', function (e) {
-    show('startup failed: ' + (e.message || 'error'),
-         (e.message || '') + '\n' + (e.filename || '') + ':' + (e.lineno || '') +
-         '\n' + ((e.error && e.error.stack) || ''));
+    handle(e.message || 'error',
+           (e.message || '') + '\n' + (e.filename || '') + ':' + (e.lineno || '') +
+           '\n' + ((e.error && e.error.stack) || ''));
   });
   addEventListener('unhandledrejection', function (e) {
     var r = e.reason;
-    show('startup failed: ' + ((r && r.message) || r),
-         String((r && r.stack) || r));
+    handle((r && r.message) || String(r), String((r && r.stack) || r));
   });
 })();
 </script>

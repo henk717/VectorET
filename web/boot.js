@@ -98,14 +98,26 @@ function refreshInputHint() {
   hintEl.classList.remove('show');
 }
 
-addEventListener('pointerlockerror', () => {
+function pointerLockDenied() {
+  if (input.pointerLock === false) {
+    return; // SDL retries on every click; report it once
+  }
   input.pointerLock = false;
-  logLine('[input] pointer lock denied by the webview');
+  // one cursor, not two: see the .nolock rule in index.html
+  document.body.classList.add('nolock');
+  logLine('[input] pointer lock denied by this webview - use a controller');
   refreshInputHint();
-});
+}
+
+// Two routes: the event fires when the request is rejected asynchronously,
+// while a nested or sandboxed document throws a SecurityError synchronously
+// out of requestPointerLock, which only the global error trap sees.
+addEventListener('pointerlockerror', pointerLockDenied);
+window.__etOnPointerLockDenied = pointerLockDenied;
 addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement) {
     input.pointerLock = true;
+    document.body.classList.remove('nolock');
     refreshInputHint();
   }
 });
@@ -169,7 +181,7 @@ async function fetchPaks(onProgress) {
 
 let paks = null;
 let net = null;
-let gamepadCfg = null;
+let inputCfg = null;
 
 var Module = {
   canvas: document.getElementById('canvas'),
@@ -189,8 +201,8 @@ var Module = {
     }
     paks = null; // the bytes now live in the wasm heap; drop the JS copies
 
-    if (gamepadCfg) {
-      FS.writeFile('/et/home/legacy/gamepad.cfg', gamepadCfg);
+    if (inputCfg) {
+      FS.writeFile('/et/home/legacy/input.cfg', inputCfg);
     }
   }],
 
@@ -198,6 +210,10 @@ var Module = {
     net.attach(Module);
     document.body.classList.add('playing');
     Module.canvas.focus();
+
+    // from here on the global error trap only logs; a running game must not
+    // be torn down by a stray non-fatal error
+    window.__etRuntimeUp = true;
 
     if (!net.isHost) {
       startConnectRetry();
@@ -285,9 +301,9 @@ function startConnectRetry() {
         setStatus(`loading game data - ${(frac * 100).toFixed(0)}%`);
         setProgress(frac);
       }),
-      fetch('gamepad.cfg').then((r) => (r.ok ? r.text() : null)).catch(() => null),
+      fetch('input.cfg').then((r) => (r.ok ? r.text() : null)).catch(() => null),
     ]);
-    gamepadCfg = cfg;
+    inputCfg = cfg;
 
     net = electedNet;
     paks = loadedPaks;
@@ -320,7 +336,7 @@ function startConnectRetry() {
       '+set', 'name', name.slice(0, 30),
       // latched, so it has to be set before the input subsystem starts
       '+set', 'in_joystick', '1',
-      '+exec', 'gamepad.cfg',
+      '+exec', 'input.cfg',
     ];
 
     if (net.isHost) {

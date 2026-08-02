@@ -109,17 +109,30 @@ Two engine changes were needed to make it work in a browser:
   `SDL_JOYDEVICEADDED`/`REMOVED` re-runs init, so a pad connected mid-game is
   picked up.
 
-Bindings and sensitivity live in [`web/gamepad.cfg`](web/gamepad.cfg), written
+Bindings, sensitivity and a keyboard-look fallback live in [`web/input.cfg`](web/input.cfg), written
 into `fs_homepath/legacy` at boot and exec'd. Left stick moves, right stick
 looks, right trigger fires, Start opens the menu. `in_joystickUseAnalog` gates
 *both* analog movement and stick look, so it has to be on.
 
-The shell reports what input is available: it listens for `pointerlockerror`
-and says so on screen rather than failing mute, and announces a pad on
-`gamepadconnected`.
+Stock ET binds only WASD — there are no turn keys at all — so without a mouse
+*or* a pad a player genuinely cannot look around. `input.cfg` therefore also
+binds keyboard look on the arrow keys (`+left`/`+right`/`+lookup`/`+lookdown`,
+`END` to centre), as a last resort that always works.
+
+The shell reports what input is available rather than failing mute: it catches
+a refused pointer lock and says so on screen, and announces a pad on
+`gamepadconnected`. A refused lock arrives two ways — the `pointerlockerror`
+event, and a `SecurityError` thrown synchronously out of
+`requestPointerLock()` in a nested document — so both are handled, and both
+are reported once rather than on every retry.
+
+**A running game is never torn down by a non-fatal error.** The global error
+trap only reports startup failures; once the runtime is up it logs and nothing
+more. Getting this wrong once meant a refused pointer lock threw the player
+back to the loading screen on their first click.
 
 Verified end to end except the pad itself — config, bindings and cvars all
-apply (`execing gamepad.cfg`, `PAD0_A = "+moveup"`, `j_pitch 0.10`), and the
+apply (`execing input.cfg`, `PAD0_A = "+moveup"`, `j_pitch 0.10`), and the
 engine reports `Joystick initialization failed: no device available` with
 nothing plugged in, which is the expected path. **Actual stick and button
 input needs real hardware to confirm.** `\joystickInfo` in the console prints
