@@ -73,6 +73,11 @@ const hintEl = document.getElementById('inputhint');
 const input = { pointerLock: null, pads: 0 };
 let hintTimer = null;
 
+// Long enough to read and act on, short enough not to sit over the game. The
+// pointer-lock notice is only raised once per session anyway, so it will not
+// come back and nag.
+const HINT_HOLD_MS = 20000;
+
 function showHint(html, holdMs) {
   hintEl.innerHTML = html;
   hintEl.classList.add('show');
@@ -89,10 +94,9 @@ function refreshInputHint() {
     return;
   }
   if (input.pointerLock === false) {
-    // no timeout: this one is not incidental, it is the whole input story
     showHint('<b>Mouse look unavailable</b> — this webview blocks pointer lock. ' +
              'Connect a controller and press any button on it, or use the ' +
-             '<b>arrow keys</b> to turn.');
+             '<b>arrow keys</b> to turn.', HINT_HOLD_MS);
     return;
   }
   hintEl.classList.remove('show');
