@@ -115,6 +115,29 @@
 
   /* ---- game ---- */
 
+  /* input status, shown over the game */
+  #inputhint {
+    display: none;
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    max-width: min(560px, 92vw);
+    padding: 7px 14px;
+    background: rgba(13, 12, 10, 0.88);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  body.playing #inputhint.show { display: block; }
+  #inputhint b { color: var(--accent); }
+
   #canvas {
     display: none;
     position: absolute;
@@ -139,6 +162,7 @@
 </div>
 
 <canvas id="canvas" tabindex="-1"></canvas>
+<div id="inputhint"></div>
 <div id="log"></div>
 
 <script>

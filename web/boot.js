@@ -59,6 +59,72 @@ function logLine(msg, isErr) {
 
 statusEl.addEventListener('click', () => document.body.classList.toggle('showlog'));
 
+/* -------------------------------------------------- input availability */
+
+/**
+ * Report what the player can actually steer with.
+ *
+ * Some webviews refuse Pointer Lock outright. Without it there is no mouse
+ * look, and the old behaviour was to leave the player stuck staring straight
+ * ahead with nothing said. A pad needs no pointer lock at all, so say so
+ * rather than treating a missing mouse as the end of it.
+ */
+const hintEl = document.getElementById('inputhint');
+const input = { pointerLock: null, pads: 0 };
+let hintTimer = null;
+
+function showHint(html, holdMs) {
+  hintEl.innerHTML = html;
+  hintEl.classList.add('show');
+  clearTimeout(hintTimer);
+  if (holdMs) {
+    hintTimer = setTimeout(() => hintEl.classList.remove('show'), holdMs);
+  }
+}
+
+function refreshInputHint() {
+  if (input.pads > 0) {
+    showHint('<b>Controller ready.</b> Left stick moves, right stick looks, ' +
+             'right trigger fires, <b>Start</b> for the menu.', 6000);
+    return;
+  }
+  if (input.pointerLock === false) {
+    // no timeout: this one is not incidental, it is the whole input story
+    showHint('<b>Mouse look unavailable</b> — this webview blocks pointer lock. ' +
+             'Connect a controller and press any button on it, or use the ' +
+             '<b>arrow keys</b> to turn.');
+    return;
+  }
+  hintEl.classList.remove('show');
+}
+
+addEventListener('pointerlockerror', () => {
+  input.pointerLock = false;
+  logLine('[input] pointer lock denied by the webview');
+  refreshInputHint();
+});
+addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement) {
+    input.pointerLock = true;
+    refreshInputHint();
+  }
+});
+
+// Browsers hide pads until a button is pressed, so this usually fires well
+// after the engine has started - which is why the engine also had to learn
+// to pick up controllers hot rather than only enumerating them at boot.
+addEventListener('gamepadconnected', (e) => {
+  input.pads++;
+  logLine(`[input] gamepad connected: ${e.gamepad.id} ` +
+          `(${e.gamepad.buttons.length} buttons, ${e.gamepad.axes.length} axes, ` +
+          `mapping "${e.gamepad.mapping || 'none'}")`);
+  refreshInputHint();
+});
+addEventListener('gamepaddisconnected', () => {
+  input.pads = Math.max(0, input.pads - 1);
+  refreshInputHint();
+});
+
 /* -------------------------------------------------- assets */
 
 async function fetchPaks(onProgress) {
@@ -103,6 +169,7 @@ async function fetchPaks(onProgress) {
 
 let paks = null;
 let net = null;
+let gamepadCfg = null;
 
 var Module = {
   canvas: document.getElementById('canvas'),
@@ -111,13 +178,20 @@ var Module = {
   printErr: (t) => { console.error(t); logLine(t, true); },
 
   preRun: [function () {
-    for (const d of ['/et', '/et/etmain', '/et/legacy', '/et/home']) {
+    // /et/home/legacy is where exec looks: the search path is
+    // fs_homepath/fs_game before fs_basepath/fs_game, and fs_game is "legacy"
+    for (const d of ['/et', '/et/etmain', '/et/legacy', '/et/home',
+                     '/et/home/legacy']) {
       try { FS.mkdir(d); } catch (e) { /* exists */ }
     }
     for (const p of paks) {
       FS.writeFile('/et/' + p.path, p.data);
     }
     paks = null; // the bytes now live in the wasm heap; drop the JS copies
+
+    if (gamepadCfg) {
+      FS.writeFile('/et/home/legacy/gamepad.cfg', gamepadCfg);
+    }
   }],
 
   onRuntimeInitialized: function () {
@@ -205,13 +279,15 @@ function startConnectRetry() {
 
     // Election and asset loading are independent; the election is short and
     // the paks are large, so overlapping them hides the election entirely.
-    const [electedNet, loadedPaks] = await Promise.all([
+    const [electedNet, loadedPaks, cfg] = await Promise.all([
       VectorETNet.elect(),
       fetchPaks((frac) => {
         setStatus(`loading game data - ${(frac * 100).toFixed(0)}%`);
         setProgress(frac);
       }),
+      fetch('gamepad.cfg').then((r) => (r.ok ? r.text() : null)).catch(() => null),
     ]);
+    gamepadCfg = cfg;
 
     net = electedNet;
     paks = loadedPaks;
@@ -242,6 +318,9 @@ function startConnectRetry() {
       '+set', 'sv_master4', '',
       '+set', 'sv_master5', '',
       '+set', 'name', name.slice(0, 30),
+      // latched, so it has to be set before the input subsystem starts
+      '+set', 'in_joystick', '1',
+      '+exec', 'gamepad.cfg',
     ];
 
     if (net.isHost) {

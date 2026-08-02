@@ -89,6 +89,42 @@ images or sounds. Two shader warnings remain (`gfx/2d/crosshairs_alt`,
 `crosshairt_alt`); those files are absent from stock pak0 and warn identically
 with the full 218 MB set.
 
+## Controller support
+
+Some webviews refuse Pointer Lock. Without it there is no mouse look, which
+leaves the player staring straight ahead — so a gamepad is the fallback, and
+ET: Legacy already has full `SDL_GameController` support to build on.
+
+Two engine changes were needed to make it work in a browser:
+
+- **SDL never recognises web gamepads as controllers.** SDL 2.30.9's
+  Emscripten joystick driver returns `SDL_FALSE` from
+  `GetGamepadMapping`, so a pad reported by the browser in the "standard"
+  layout only ever appears as a raw joystick — and ET's analog stick look
+  lives in the `SDL_CONTROLLERAXISMOTION` path, which then never runs.
+  `IN_RegisterWebGamepadMappings()` registers the fixed W3C standard layout
+  against each device's GUID so `SDL_GameControllerOpen` succeeds.
+- **Pads arrive late.** Browsers hide gamepads until the user presses a
+  button on one, and ET only enumerated joysticks once at startup. Handling
+  `SDL_JOYDEVICEADDED`/`REMOVED` re-runs init, so a pad connected mid-game is
+  picked up.
+
+Bindings and sensitivity live in [`web/gamepad.cfg`](web/gamepad.cfg), written
+into `fs_homepath/legacy` at boot and exec'd. Left stick moves, right stick
+looks, right trigger fires, Start opens the menu. `in_joystickUseAnalog` gates
+*both* analog movement and stick look, so it has to be on.
+
+The shell reports what input is available: it listens for `pointerlockerror`
+and says so on screen rather than failing mute, and announces a pad on
+`gamepadconnected`.
+
+Verified end to end except the pad itself — config, bindings and cvars all
+apply (`execing gamepad.cfg`, `PAD0_A = "+moveup"`, `j_pitch 0.10`), and the
+engine reports `Joystick initialization failed: no device available` with
+nothing plugged in, which is the expected path. **Actual stick and button
+input needs real hardware to confirm.** `\joystickInfo` in the console prints
+what SDL sees.
+
 ## Testing
 
 `web/dev-2p.html` runs two peers side by side, backed by a BroadcastChannel
