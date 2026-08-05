@@ -14,3 +14,6 @@ web/etl.js
 web/etl.wasm
 web/manifest.json
 *.xdc
+
+# macOS
+.DS_Store
