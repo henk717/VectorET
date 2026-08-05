@@ -21,5 +21,12 @@ git submodule update --init --recursive
 tools/emsdk/emsdk install latest
 tools/emsdk/emsdk activate latest
 
+mkdir assets
+mkdir assets/etmain
+cd assets/etmain
+wget https://mirror.etlegacy.com/etmain/pak0.pk3
+wget https://mirror.etlegacy.com/etmain/pak1.pk3
+wget https://mirror.etlegacy.com/etmain/pak2.pk3
+cd ../../
 echo
 echo "Setup complete. Build with:  ./build.sh"

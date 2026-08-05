@@ -17,11 +17,11 @@ chat's realtime channel.
 A WebXDC realtime channel is an unordered broadcast shared by everyone in the
 chat. The engine wants a UDP LAN. Three pieces bridge them:
 
-| Piece | Where | What |
-|---|---|---|
-| Identity | `web/webxdc-net.js` | each peer hashes `webxdc.selfAddr` into a stable fake IPv4 (`10.x.y.z`) |
-| Framing | `web/webxdc-net.js` | 13-byte header `[type][destIP:4][destPort:2][srcIP:4][srcPort:2]`, so a broadcast behaves like a switched LAN |
-| Transport | `src/src/sys/net_webxdc.c` | a ring buffer wired into the engine's two platform seams |
+| Piece     | Where                        | What                                                                                                            |
+| --------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Identity  | `web/webxdc-net.js`        | each peer hashes `webxdc.selfAddr` into a stable fake IPv4 (`10.x.y.z`)                                     |
+| Framing   | `web/webxdc-net.js`        | 13-byte header `[type][destIP:4][destPort:2][srcIP:4][srcPort:2]`, so a broadcast behaves like a switched LAN |
+| Transport | `src/src/sys/net_webxdc.c` | a ring buffer wired into the engine's two platform seams                                                        |
 
 The engine hooks are the same two `net_ip.c` used for the WebSocket build:
 `Sys_SendPacket` on the way out, `NET_Sleep` on the way in. Game code is
@@ -37,26 +37,9 @@ solved the same problem first.
 ## Build
 
 Setup the build tools with ``./setup-build.sh`` after cloning the repo.
-Then build with ./build.sh
+Then build with ``./build.sh``
 
-Tested on Ubuntu-24.04 with nothing but the build-essential and cmake packages installed (and git)
-
-Then:
-
-```sh
-source scripts/env.sh
-./scripts/build-gl4es.sh
-./scripts/build-engine.sh
-```
-
-Game data is **not** included. Fetch `mp_bin.pk3` and `pak0/1/2.pk3` from
-`mirror.etlegacy.com/etmain/` into `assets/etmain/`, then:
-
-```sh
-./scripts/build-assets.sh              # 218 MB -> 75 MB
-ASSET_DIR=assets-trimmed ./scripts/stage-web.sh
-./scripts/package-xdc.sh               # -> VectorET.xdc, ~87 MB
-```
+Tested on Ubuntu-24.04 with nothing but the ``build-essential``, ``cmake`` and ``ffmpeg`` packages installed (and git)
 
 ## Assets
 
