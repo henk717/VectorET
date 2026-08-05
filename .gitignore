@@ -1,7 +1,4 @@
 # toolchain and upstream checkouts (see README for the clone commands)
-tools/emsdk/
-tools/gl4es/
-src/
 build/
 
 # game data: not redistributable, fetch from mirror.etlegacy.com
