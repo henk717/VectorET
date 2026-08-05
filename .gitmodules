@@ -4,3 +4,6 @@
 [submodule "tools/emsdk"]
 	path = tools/emsdk
 	url = https://github.com/emscripten-core/emsdk
+[submodule "src/libs"]
+	path = src/libs
+	url = https://github.com/etlegacy/etlegacy-libs
