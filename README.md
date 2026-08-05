@@ -41,7 +41,7 @@ Emscripten side modules to static libraries, and the mods then fail to
 `dlopen`), and `vorbis-tools` for the audio step.
 
 ```sh
-git clone -b web https://github.com/JSKitty/etlegacy src
+git clone -b webxdc https://github.com/JSKitty/etlegacy src
 git clone -b etweb https://github.com/JSKitty/gl4es tools/gl4es
 git -C src submodule update --init --depth 1
 git clone https://github.com/emscripten-core/emsdk tools/emsdk
