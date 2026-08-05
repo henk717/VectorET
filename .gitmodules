@@ -1,3 +1,6 @@
 [submodule "tools/gl4es"]
 	path = tools/gl4es
 	url = https://github.com/JSKitty/gl4es
+[submodule "tools/emsdk"]
+	path = tools/emsdk
+	url = https://github.com/emscripten-core/emsdk
