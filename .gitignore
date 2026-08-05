@@ -14,3 +14,6 @@ web/manifest.json
 
 # macOS
 .DS_Store
+
+# WSL Spam
+*.Identifier

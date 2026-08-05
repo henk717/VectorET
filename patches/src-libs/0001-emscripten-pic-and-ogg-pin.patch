@@ -1,0 +1,33 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a068e8bc..30a6c489 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -138,8 +138,10 @@ function(etl_setup_cmake_args _list)
+ 		list(APPEND ${_list} -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>)
+ 	endif()
+ 
+-	# NOTE: set the CMAKE_POSITION_INDEPENDENT_CODE flag for all bundled libs (-fPIC) on 64 bit
+-	if (ETL_64BITS)
++	# NOTE: set the CMAKE_POSITION_INDEPENDENT_CODE flag for all bundled libs (-fPIC) on 64 bit.
++	# Emscripten (wasm32) is not ETL_64BITS, but the client is a MAIN_MODULE with dlopen-able
++	# side modules, so every bundled lib must be PIC or wasm-ld rejects the non-PIC objects.
++	if (ETL_64BITS OR EMSCRIPTEN)
+ 		list(APPEND ${_list} -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+ 	endif()
+ 
+@@ -641,9 +643,15 @@ if(BUNDLED_OGG_VORBIS AND BUILD_CLIENT)
+ 		)
+ 
+ 		set(VORBIS_BUNDLED_LIBRARIES "${LIBS_BINARY_DIR}/vorbis/lib/libvorbis${CMAKE_STATIC_LIBRARY_SUFFIX}" "${LIBS_BINARY_DIR}/vorbis/lib/libvorbisfile${CMAKE_STATIC_LIBRARY_SUFFIX}")
++		# Cross-compiling: vorbis's nested configure runs FindOgg.cmake, which cannot see the
++		# bundled ogg ExternalProject built above (it lives in the build tree, outside the
++		# Emscripten sysroot). Pre-seed the cache entries so find_path/find_library no-op and
++		# use the bundled ogg instead of searching the sysroot.
+ 		etl_setup_cmake_args(BUNDLED_OGG_VORBIS_CMAKE_ARGS
+ 				-DCMAKE_LIBRARY_PATH=${LIBS_BINARY_DIR}/ogg
+ 				-DOGG_ROOT=${LIBS_BINARY_DIR}/ogg
++				-DOGG_INCLUDE_DIR=${LIBS_BINARY_DIR}/ogg/include
++				-DOGG_LIBRARY=${LIBS_BINARY_DIR}/ogg/lib/libogg${CMAKE_STATIC_LIBRARY_SUFFIX}
+ 		)
+ 
+ 		ExternalProject_Add(bundled_ogg_vorbis
