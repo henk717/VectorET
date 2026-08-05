@@ -1,0 +1,11 @@
+/build/
+/out/
+/libs/**/
+
+!/**/git_version.h
+
+*.png
+*.jpeg
+*.jpg
+*.svg
+*.dat

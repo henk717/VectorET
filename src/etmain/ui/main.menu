@@ -1,0 +1,214 @@
+#include "ui/menudef.h"
+#include "ui/menumacros.h"
+
+// Defines //
+#define WINDOW_X		16
+#define WINDOW_Y		16
+#define WINDOW_WIDTH	__WINDOW_WIDTH-32
+#define WINDOW_HEIGHT	448
+#define MENU_WIDTH		128
+#define MENU_HEIGHT		255
+#define DISCORD_X		0
+#define DISCORD_Y		MENU_HEIGHT+6
+#define DISCORD_WIDTH	MENU_WIDTH
+#define DISCORD_HEIGHT	89
+#define GROUP_NAME		"grpMain"
+
+// Opener //
+menuDef {
+	name		"main_opener"
+	visible		0
+	fullscreen	0
+	rect		WINDOW_X WINDOW_Y MENU_WIDTH MENU_HEIGHT
+
+	onOpen {
+		open fadebox_black ;
+		open background_1 ;
+		setmenuitemcolor fadebox_black fadebox backcolor 0 0 0 1 ;
+		fadeoutmenu fadebox_black ;
+		open main ;
+		clearcvar ui_profile_create_error ;
+		close main_opener
+	}
+}
+
+// Main Menu //
+menuDef {
+	name		"main"
+	visible		0
+	fullscreen	0
+	rect		WINDOW_X WINDOW_Y $evalint(WINDOW_WIDTH) WINDOW_HEIGHT
+	style		WINDOW_STYLE_FILLED
+
+	onOpen {
+		conditionalscript cl_profile 1
+			( "clearFocus" )
+			( "close main ; open profile_create_initial_opener" )	// do we want an abort here?
+
+		conditionalscript ROldModeCheck 2
+			( "clearFocus ; open vid_confirm" )
+			( "clearFocus" )
+	}
+
+	onEsc {
+		clearFocus ;
+		open quit
+	}
+
+// Background Logo //
+	itemDef {
+		name		"etl_logo"
+		rect		$evalint(__WINDOW_WIDTH/2-100-16) 124 200 200		// 16, 16 offset!!
+		style		WINDOW_STYLE_SHADER
+		background	"ui/assets/etl_logo_huge"
+		visible		1
+		decoration
+	}
+
+#ifndef ANDROID
+// Discord Window below the welcome panel //
+	itemDef {
+		name		"discord"
+		group		GROUP_NAME
+		rect		$evalfloat(DISCORD_X) $evalfloat(DISCORD_Y) DISCORD_WIDTH DISCORD_HEIGHT
+		style		WINDOW_STYLE_FILLED
+		backcolor	0 0 0 .2
+		border		WINDOW_BORDER_FULL
+		bordercolor	.5 .5 .5 .5
+		visible		1
+		decoration
+	}
+
+	itemDef {
+		name		"discordTitle"
+		group		GROUP_NAME
+		rect		$evalfloat(DISCORD_X+2) $evalfloat(DISCORD_Y+2) $evalfloat(DISCORD_WIDTH-4) 12
+		text		_("JOIN OUR DISCORD")
+		textfont	UI_FONT_ARIBLK_16
+		textscale	.19
+		textalign	ITEM_ALIGN_CENTER
+		textalignx	$evalfloat(.5*(DISCORD_WIDTH-4))
+		textaligny	10
+		style		WINDOW_STYLE_FILLED
+		backcolor	.16 .2 .17 .8
+		forecolor	.6 .6 .6 1
+		visible		1
+		decoration
+	}
+
+	itemDef {
+		name		"discord_button"
+		group		GROUP_NAME
+		rect		$evalfloat(DISCORD_X+.5*(DISCORD_WIDTH-62)) $evalfloat(DISCORD_Y+20) 62 62
+		type		ITEM_TYPE_BUTTON
+		style		WINDOW_STYLE_FILLED
+		backcolor	.3 .3 .3 .4
+		border		WINDOW_BORDER_FULL
+		bordercolor	.1 .1 .1 .5
+		visible		1
+
+		mouseEnter {
+			setitemcolor "discord_button" backcolor .5 .5 .5 .4 ;
+			setitemcolor "discord_logo" forecolor 1 1 1 1
+		}
+
+		mouseExit {
+			setitemcolor "discord_button" backcolor .3 .3 .3 .4 ;
+			setitemcolor "discord_logo" forecolor .55 .55 .55 1
+		}
+
+		action {
+			setitemcolor "discord_button" backcolor .3 .3 .3 .4 ;
+			setitemcolor "discord_logo" forecolor .55 .55 .55 1 ;
+			clearFocus ;
+			uiScript validate_openURL "https://discord.gg/UBAZFys"
+		}
+	}
+
+	itemDef {
+		name		"discord_logo"
+		rect		$evalfloat(DISCORD_X+.5*(DISCORD_WIDTH-48)) $evalfloat(DISCORD_Y+28) 48 48
+		style		WINDOW_STYLE_SHADER
+		background	"ui/assets/logo_discord"
+		forecolor	.55 .55 .55 1
+		visible		1
+		decoration
+	}
+#endif
+
+// Window //
+	//WINDOW( _("WELCOME"), 50 )
+	SUBWINDOW( 0, 0, MENU_WIDTH, MENU_HEIGHT, _("WELCOME") )
+	execKey "c" { close main ; open main_quickconnect }
+
+// Active profile
+	CVARLABEL( 6+((MENU_WIDTH-12)/2), 18, MENU_WIDTH-12, 10, "cl_profile", .2, ITEM_ALIGN_CENTER, 0, 8 )
+
+// Buttons //
+	BUTTON( 6, 32, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_PLAY"), .3, 14, close main ; /*close backgroundmusic ; open backgroundmusic_server ;*/ uiScript UpdateFilter ; uiScript ServerSort 2 ; open playonline )
+#ifndef ANDROID
+	BUTTON( 6, 56, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_HOST"), .3, 14, close main ; /*close backgroundmusic ; open backgroundmusic_server ;*/ uiScript loadArenas ; uiScript initHostGameFeatures ; open hostgame )
+#endif
+	BUTTON( 6, 80, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_REPLAYS"), .3, 14, close main ; open viewreplay )
+	// LINE(1, 100.5, MENU_WIDTH - 2, 1, .5 .5 .5 .4)
+	BUTTON( 6, 104, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_OPTIONS"), .3, 14, close main ; open options )
+	LINE(1, 128, MENU_WIDTH - 2, 1, .5 .5 .5 .4)
+	BUTTON( 6, 135, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_PROFILE"), .3, 14, close main ; open profile )
+	// LINE(1, 148.5, MENU_WIDTH - 2, 1, .5 .5 .5 .4)
+	BUTTON( 6, 159, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_MODS"), .3, 14, close main ; open mods )
+	BUTTON( 6, 183, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_CHANGELOG"), .3, 14, setcvar ui_changelog_ingame 0 ; open changelog_popup )
+	BUTTON( 6, 207, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_CREDITS"), .3, 14, close main ; open credits_etlegacy )
+	BUTTON( 6, 231, MENU_WIDTH-12, 18, _("MSGID_MENU_MAIN_QUIT"), .3, 14, clearFocus ; open quit )
+
+// Vanilla or old Legacy client warning //
+#ifdef OLD_CLIENT
+#define SECURITY_WIDTH	200
+	LABEL( __WINDOW_WIDTH/2-100-16, 368, SECURITY_WIDTH, 18, _("^1SECURITY INFORMATION"), .3, ITEM_ALIGN_CENTER, .5*SECURITY_WIDTH, 8 )
+	LABELWHITE( __WINDOW_WIDTH/2-100-16, 384, SECURITY_WIDTH, 9, _("You are running old software"), .2, ITEM_ALIGN_CENTER, .5*SECURITY_WIDTH, 8 )
+	// Yeah we have a Legacy client, but its old.
+	#ifdef ETLEGACY
+		LABEL( __WINDOW_WIDTH/2-100-16, 398, SECURITY_WIDTH, 9, _("We do recommend to\nupgrade your Legacy client"), .2, ITEM_ALIGN_CENTER, .5*SECURITY_WIDTH, 8 )
+	#else
+		LABEL( __WINDOW_WIDTH/2-100-16, 398, SECURITY_WIDTH, 9, _("We do recommend to\nupgrade your ET client"), .2, ITEM_ALIGN_CENTER, .5*SECURITY_WIDTH, 8 )
+	#endif
+	BUTTON( __WINDOW_WIDTH/2-100-16+6, 428, SECURITY_WIDTH-12, 18, _("UPGRADE NOW"), .3, 14, clearFocus ; uiScript validate_openURL "https://www.etlegacy.com" )
+#endif
+
+#ifdef NON_RELEASE_BUILD
+itemDef {
+	name "development_build_banner"
+	rect $evalint(__WINDOW_WIDTH/2-71) 0 110 13
+	text _("DEVELOPMENT BUILD")
+	textfont UI_FONT_ARIBLK_16
+	textscale   .19
+	textalign   ITEM_ALIGN_CENTER
+	textalignx  55
+	textaligny  10
+	style WINDOW_STYLE_FILLED
+	backcolor   1.00 0.34 0.00 .5
+	forecolor   0.90 0.90 0.90 1
+	visible     1
+	decoration
+}
+#endif
+
+// Version //
+LABEL( 2, 450, 132, 10, "^y"ETLEGACY_VERSION, .2, ITEM_ALIGN_LEFT, 0, 8 )
+
+// message of the day?
+//	SUBWINDOW( MENU_WIDTH+6, 0, __WINDOW_WIDTH-MENU_WIDTH-6-32, 28, _("MESSAGE OF THE DAY") )
+//	itemDef {
+//		name			"messageOfTheDay"
+//		group			GROUP_NAME
+//		rect			0 340 640 10
+//		ownerDraw		UI_SERVERMOTD
+//		textfont		UI_FONT_COURBD_21
+//		textstyle		ITEM_TEXTSTYLE_SHADOWED
+//		textscale		.2
+//		textalignx		4
+//		textaligny		8
+//		forecolor		.6 .6 .6 1
+//		visible			1
+//		decoration
+//	}
+}

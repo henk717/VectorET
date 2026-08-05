@@ -1,0 +1,29 @@
+root = true
+
+[*]
+indent_style = tab
+tab_width = 4
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{json,yml}]
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.sh]
+indent_style = space
+indent_size = 4
+
+[*.bat]
+end_of_line = crlf
+
+[*NSIS.template.in]
+charset = utf-8-bom
