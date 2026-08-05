@@ -45,8 +45,8 @@ git clone -b webxdc https://github.com/JSKitty/etlegacy src
 git clone -b etweb https://github.com/JSKitty/gl4es tools/gl4es
 git -C src submodule update --init --depth 1
 git clone https://github.com/emscripten-core/emsdk tools/emsdk
-EMSDK_PYTHON=/opt/homebrew/bin/python3.11 tools/emsdk/emsdk install latest
-EMSDK_PYTHON=/opt/homebrew/bin/python3.11 tools/emsdk/emsdk activate latest
+tools/emsdk/emsdk install latest
+tools/emsdk/emsdk activate latest
 ```
 
 Then:
