@@ -36,18 +36,10 @@ solved the same problem first.
 
 ## Build
 
-Needs the Emscripten SDK, CMake **≥ 4.3.3** (older CMake silently downgrades
-Emscripten side modules to static libraries, and the mods then fail to
-`dlopen`), and `vorbis-tools` for the audio step.
+Setup the build tools with ``./setup-build.sh`` after cloning the repo.
+Then build with ./build.sh
 
-```sh
-git clone -b webxdc https://github.com/JSKitty/etlegacy src
-git clone -b etweb https://github.com/JSKitty/gl4es tools/gl4es
-git -C src submodule update --init --depth 1
-git clone https://github.com/emscripten-core/emsdk tools/emsdk
-tools/emsdk/emsdk install latest
-tools/emsdk/emsdk activate latest
-```
+Tested on Ubuntu-24.04 with nothing but the build-essential and cmake packages installed (and git)
 
 Then:
 
