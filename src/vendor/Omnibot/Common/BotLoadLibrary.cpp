@@ -163,9 +163,6 @@ const char *Omnibot_FixPath(const char *_path)
 
 #include <stdarg.h>
 #include <dlfcn.h>
-#ifdef __EMSCRIPTEN__
-#include <unistd.h> // access(), R_OK
-#endif
 
 #define _vsnprintf vsnprintf
 #define GetProcAddress dlsym
@@ -326,38 +323,6 @@ eomnibot_error Omnibot_LoadLibrary(int version, const char *lib, const char *pat
 #define SUFFIX
 #endif
 #endif
-#ifdef __EMSCRIPTEN__
-	// The engine runs with an Emscripten FS whose CWD is not the game base
-	// path, so the CWD-relative attempts below never find the library. The
-	// web staging (scripts/stage-web.sh) places the side module at the FS
-	// base path /et, so try its absolute location first.
-	//
-	// CRITICAL: under Emscripten a FAILED dlopen() poisons the loaded-library
-	// cache by name — a later dlopen of the same path "succeeds" but exposes no
-	// symbols (see Sys_LoadDll in sys_main.c, which guards with access() for the
-	// same reason). We must therefore only attempt to dlopen paths that actually
-	// exist, otherwise we corrupt the dynamic linker state and the cgame VM
-	// (loaded right after, during map init) fails with "VM_Create on cgame
-	// failed".
-	// Build the candidate list into stable buffers first. We can't put OB_VA()
-	// calls directly in an array: OB_VA cycles through only 3 internal buffers,
-	// so the 4th/5th call would overwrite the 1st/2nd before access()/dlopen
-	// consumed them.
-	char pathBase[1024], pathLegacy[1024], pathMod[1024], pathCwd[1024], pathBare[1024];
-	snprintf(pathBase, sizeof(pathBase), "/et/%s" SUFFIX POSTFIX, lib);
-	snprintf(pathLegacy, sizeof(pathLegacy), "/et/legacy/%s" SUFFIX POSTFIX, lib);
-	snprintf(pathMod, sizeof(pathMod), "%s/%s" SUFFIX POSTFIX, path ? path : ".", lib);
-	snprintf(pathCwd, sizeof(pathCwd), "./%s" SUFFIX POSTFIX, lib);
-	snprintf(pathBare, sizeof(pathBare), "%s" SUFFIX POSTFIX, lib);
-	const char *const s_emscriptenPaths[] = { pathBase, pathLegacy, pathMod, pathCwd, pathBare };
-	for (size_t i = 0; i < sizeof(s_emscriptenPaths) / sizeof(s_emscriptenPaths[0]) && !g_BotLibrary; ++i)
-	{
-		if (access(s_emscriptenPaths[i], R_OK) == 0)
-		{
-			g_BotLibrary = Omnibot_LL(s_emscriptenPaths[i]);
-		}
-	}
-#else
 	g_BotLibrary = Omnibot_LL(OB_VA("%s/%s" SUFFIX POSTFIX, path ? path : ".", lib));
 	if (!g_BotLibrary)
 	{
@@ -375,7 +340,6 @@ eomnibot_error Omnibot_LoadLibrary(int version, const char *lib, const char *pat
 	{
 		g_BotLibrary = Omnibot_LL(OB_VA("%s" SUFFIX POSTFIX, lib));
 	}
-#endif
 #endif
 
 	if (!g_BotLibrary)
