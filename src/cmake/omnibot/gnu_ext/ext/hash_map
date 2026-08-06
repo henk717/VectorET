@@ -1,0 +1,31 @@
+/*
+ * Shim for the libstdc++-only header <ext/hash_map>, which does not exist in
+ * Emscripten's libc++.  The Omni-Bot common.h includes it and then does
+ * `namespace stdext { using __gnu_cxx::hash_map; ... }`.  Provide
+ * __gnu_cxx::hash_map / hash_multimap in terms of the standard unordered
+ * containers.  Only on the omnibot_et SIDE_MODULE include path.
+ */
+#ifndef OB_SHIM_EXT_HASH_MAP
+#define OB_SHIM_EXT_HASH_MAP
+
+#include <unordered_map>
+#include "functional"
+
+namespace __gnu_cxx
+{
+	template <typename Key, typename Tp,
+	          typename HashFcn = __gnu_cxx::hash<Key>,
+	          typename EqualKey = std::equal_to<Key>,
+	          typename Alloc = std::allocator<Tp> >
+	using hash_map = std::unordered_map<Key, Tp, HashFcn, EqualKey,
+	          std::allocator<std::pair<const Key, Tp> > >;
+
+	template <typename Key, typename Tp,
+	          typename HashFcn = __gnu_cxx::hash<Key>,
+	          typename EqualKey = std::equal_to<Key>,
+	          typename Alloc = std::allocator<Tp> >
+	using hash_multimap = std::unordered_multimap<Key, Tp, HashFcn, EqualKey,
+	          std::allocator<std::pair<const Key, Tp> > >;
+}
+
+#endif /* OB_SHIM_EXT_HASH_MAP */

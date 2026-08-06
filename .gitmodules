@@ -7,3 +7,6 @@
 [submodule "src/libs"]
 	path = src/libs
 	url = https://github.com/etlegacy/etlegacy-libs
+[submodule "src/vendor/omni-bot"]
+	path = src/vendor/omni-bot
+	url = https://github.com/jswigart/omni-bot

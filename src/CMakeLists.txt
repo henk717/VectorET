@@ -206,6 +206,9 @@ endif(BUILD_SERVER)
 
 if(BUILD_MOD)
 	include(cmake/ETLBuildMod.cmake)
+	# Build the Omni-Bot AI library (omnibot_et) as a dlopen-able side module
+	# so the qagame loader's dlopen("omnibot_et.so") actually finds it.
+	include(cmake/ETLBuildOmnibot.cmake)
 endif(BUILD_MOD)
 
 #-----------------------------------------------------------------
